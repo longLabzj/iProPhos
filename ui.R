@@ -1,0 +1,661 @@
+
+shinyUI(fluidPage(style = "width: 1325px",
+                tags$head(
+                  tags$style(HTML("
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+
+    "))
+                ),
+                tags$div(
+                  tags$img(src = "header.png",style="width:100%;")
+                ),
+                navbarPage("",id="whole",theme = "my_css.css",
+                           tabPanel("Home",icon = icon("home"),
+                                    tags$div(style="margin-left:15px;margin-right:15px;padding-top:0px;margin-bottom: 20px;",
+                                             h3("Introduction"),
+                                             p("iProPhos is a user-friendly interactive web portal that provides multiple analysis modules to explore and
+                                                visualize functional proteomics and phosphoproteomics across 12 cancer types.")),
+                                    slickROutput("slickr",height = "350px",width = "auto"),
+                                    includeHTML("Home.html")),
+                           tabPanel("Proteome Analysis",icon = icon("dna"),
+                                    tabsetPanel(type="tabs",
+                                                navbarMenu("Differential expression",
+                                                           tabPanel("Boxplot",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       selectizeInput("symbol", "Protein", choices = NULL),
+                                                                                       colourInput("pro_col_tumor", "Tumor Color", "red"),
+                                                                                       colourInput("pro_col_normal", "Normal Color", "grey"),
+                                                                                       sliderInput("pro_df_size", label = "Point Size", min = 1, value = 3,
+                                                                                                   max = 8, step = 0.5),
+                                                                                       radioButtons("pro_df_method", label = "Differential Methods",
+                                                                                                    choices = list("t.test", "wilcox.test", "anova"), 
+                                                                                                    selected = "t.test"),
+                                                                                       actionButton("action", "Plot"),
+                                                                                       downloadButton('downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             
+                                                                             withSpinner(plotOutput("plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           ),
+                                                           tabPanel("Volcano plot",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width=2,
+                                                                                       selectizeInput("pro_volcano_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       hr(),
+                                                                                       strong("[For plot]", style = "font-size: 14px;"),
+                                                                                       br(),
+                                                                                       selectizeInput("pro_volcano_gene", "Protein", choices = NULL),
+                                                                                       numericInput("pro_volcano_FDR", "FDR cutoff",value = 0.05, min = 0, max = 1, step = 0.001),
+                                                                                       numericInput("pro_volcano_log2FC", "|log2FC| cutoff",value = 1, min = 0, step = 0.01),
+                                                                                       actionButton("pro_volcano_action", "Plot")
+                                                                             )),
+                                                                      
+                                                                      column(8,offset = 1,
+                                                                             h2("Volcano plot"),
+                                                                             hr(),
+                                                                             downloadButton('pro_volcano_plot_download', 'Download plot'),
+                                                                             br(),
+                                                                             column(10,offset = 1,
+                                                                             withSpinner(plotOutput("pro_volcano_plot",height="400px",width="400px"),type = 4,size = 1,color = "#739fc7"))),
+                                                                      column(8,offset = 4,
+                                                                             h2("Differential Analysis Results"),
+                                                                             hr(),
+                                                                             h5("Differential analysis is conducted employing the ",code("limma")," algorithm."),
+                                                                             downloadButton('pro_volcano_csv_download', 'Download table'),
+                                                                             br(),
+                                                                             withSpinner(DT::dataTableOutput("pro_volcano_table",width="80%"),type = 4,size = 1,color = "#739fc7"))
+                                                                    )
+                                                           )),
+                                                navbarMenu("Correlation",
+                                                           tabPanel("Correlation plot",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("corr_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                                       selectizeInput("geneA", "Protein A", choices = NULL),
+                                                                                       selectizeInput("geneB", "Protein B", choices = NULL),
+                                                                                       colourInput("pro_col_non_imputed_corr", "Color for non-imputed data", "blue"),
+                                                                                       colourInput("pro_col_imputed_corr", "Color for imputed data", "red"),
+                                                                                       sliderInput("pro_corr_size", label = "Point Size", min = 1, value = 3,
+                                                                                                   max = 8, step = 0.5),
+                                                                                       radioButtons("correlation", "Method",
+                                                                                                    choices = c("pearson", "spearman","kendall"),selected = "pearson"),
+                                                                                       actionButton("action2", "Plot"),
+                                                                                       downloadButton('downloadPdf2', 'Download')
+                                                                             )),
+                                                                      column(8,offset = 1,align="center",
+                                                                             withSpinner(plotOutput("corr_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           ),
+                                                           tabPanel("Correlation table",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width=2,
+                                                                                       selectizeInput("corr2_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                                       selectizeInput("corr2_pro", "Protein", choices = NULL),
+                                                                                       radioButtons("corr2_correlation", "Method",
+                                                                                                    choices = c("pearson", "spearman","kendall"),selected = "pearson"),
+                                                                                       actionButton("corr2_action", "List"),
+                                                                                       
+                                                                             )),
+                                                                      column(7,offset = 1,
+                                                                             h3("Using non-imputed dataset"),
+                                                                             hr(),
+                                                                             downloadButton('corr2_table_nonImpute_download', 'Download'),
+                                                                             withSpinner(DT::dataTableOutput("corr2_table_nonImpute",height = "450px"),type = 4,size = 1.5,color = "#739fc7"),
+                                                                             br()),
+                                                                      column(7,offset = 4,
+                                                                             h3("Using imputed dataset"),
+                                                                             hr(),
+                                                                             downloadButton('corr2_table_impute_download', 'Download'),
+                                                                             br(),
+                                                                             withSpinner(DT::dataTableOutput("corr2_table_impute",height = "450px"),type = 4,size = 1.5,color = "#739fc7")
+                                                                             
+                                                                      ))
+                                                           )
+                                                ),
+                                                tabPanel("Survival", 
+                                                         br(),
+                                                         fluidRow(
+                                                           column(2, offset = 1,
+                                                                  wellPanel(width = 2,
+                                                                            selectizeInput("survival_dataset", "Choose a dataset:",
+                                                                                           choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                            selectizeInput("survival_gene", "Protein", choices = NULL),
+                                                                            colourInput("pro_col_high", "Group: High", "red"),
+                                                                            colourInput("pro_col_low", "Group: Low", "blue"),
+                                                                            radioButtons("cutoff", "Group Cutoff",
+                                                                                         c("Median", "Optimal value")),
+                                                                            actionButton("action3", "Plot"),
+                                                                            downloadButton('downloadPdf3', 'Download')
+                                                                  )),
+                                                           column(4,offset = 1,style = "margin-top: 30px;",
+                                                                  withSpinner(plotOutput("survival_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                         )
+                                                ),
+                                                tabPanel("mRNA&Protein Correlation",
+                                                         br(),
+                                                         fluidRow(
+                                                           column(2, offset = 1,
+                                                                  wellPanel(width = 2,
+                                                                            selectizeInput("mp_corr_dataset", "Choose a dataset:",
+                                                                                           choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                            selectizeInput("mp_gene", "Gene",choices = NULL),
+                                                                            colourInput("mp_col_non_imputed_corr", "Color for non-imputed data", "blue"),
+                                                                            colourInput("mp_col_imputed_corr", "Color for imputed data", "red"),
+                                                                            sliderInput("mp_corr_size", label = "Point Size", min = 1, value = 3,
+                                                                                        max = 8, step = 0.5),
+                                                                            radioButtons("mp_correlation", "Method",
+                                                                                         choices = c("pearson", "spearman","kendall"),selected = "pearson"),
+                                                                            actionButton("action4", "Plot"),
+                                                                            downloadButton('downloadPdf4', 'Download')
+                                                                  )),
+                                                           column(8,offset = 1,align="center",
+                                                                  withSpinner(plotOutput("mp_corr_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                         )
+                                                ),
+                                                navbarMenu("Clinical",
+                                                           tabPanel("Age",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("pro_age_dataset", "Dataset (Age range of patients)",
+                                                                                                      c("BRCA (31-95)" = "BRCA",
+                                                                                                        "CCRCC (30-90)" = "CCRCC",
+                                                                                                        "COAD (35-134)" = "COAD",
+                                                                                                        "GBM (24-88)" = "GBM",
+                                                                                                        "HCC (20-81)" = "HCC",
+                                                                                                        "HNSCC (23-81)" = "HNSCC",
+                                                                                                        "LSCC (40-88)" = "LSCC",
+                                                                                                        "LUAD (35-81)" = "LUAD",
+                                                                                                        "OV (37-86)" = "OV",
+                                                                                                        "PBT (0-31)" = "PBT",
+                                                                                                        "PDA (31-85)" = "PDA",
+                                                                                                        "UCEC (38-90)" = "UCEC"
+                                                                                                      )),
+                                                                                       selectizeInput("pro_age_protein", "Protein", choices = NULL),
+                                                                                       colourInput("pro_age_col_young", "Younger Color", "#0474b4"),
+                                                                                       colourInput("pro_age_col_old", "Older Color", "#e48424"),
+                                                                                       radioButtons("pro_age_cutoff", "Method",
+                                                                                                    choices = c("median", "custom"),selected = "median"),
+                                                                                       conditionalPanel(
+                                                                                         condition = "input.pro_age_cutoff == 'custom'",
+                                                                                         numericInput("pro_age_custom", label = "Please input your cutoff",value = 50,min = 0,max = 90,step = 1)),
+                                                                                       radioButtons("pro_age_method", label = "Differential Methods",
+                                                                                                    choices = list("t.test", "wilcox.test", "anova")), 
+                                                                                       actionButton("pro_age_action", "Plot"),
+                                                                                       downloadButton('pro_age_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pro_age_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )),
+                                                           tabPanel("Gender",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("pro_gender_dataset", "Choose a dataset:",
+                                                                                                      choices = c("CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","PBT","PDA")),
+                                                                                       selectizeInput("pro_gender_protein", "Protein", choices = NULL),
+                                                                                       colourInput("pro_gender_col_female", "Female Color", "#e48424"),
+                                                                                       colourInput("pro_gender_col_male", "Male Color", "#0474b4"),
+                                                                                       radioButtons("pro_gender_method", label = "Differential Methods",
+                                                                                                    choices = list("t.test", "wilcox.test", "anova"), 
+                                                                                                    selected = "t.test"),
+                                                                                       actionButton("pro_gender_action", "Plot"),
+                                                                                       downloadButton('pro_gender_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pro_gender_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           ),
+                                                           tabPanel("Tumor stage",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("pro_stage_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                                       selectizeInput("pro_stage_protein", "Protein",choices = NULL),
+                                                                                       actionButton("pro_stage_action", "Plot"),
+                                                                                       downloadButton('pro_stage_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(8,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pro_stage_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           )
+                                                ),
+                                                navbarMenu("Enrichment",
+                                                           tabPanel("GO",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("pro_go_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       selectizeInput("pro_go_regulation", "Regulation",
+                                                                                                      choices = c("Up","Down")),
+                                                                                       numericInput("pro_go_adjP", "adjusted P-value cutoff",value = 0.01, min = 0, max = 1, step = 0.001),
+                                                                                       numericInput("pro_go_FC", "Fold change cutoff",value = 1.5, min = 0, step = 0.01),
+                                                                                       actionButton("pro_go_action", "Run GO")
+                                                                             )),
+                                                                      column(9, offset = 0,
+                                                                             h2("Proteins for GO Enrichment Input"),
+                                                                             hr(),
+                                                                             p("The table below displays the results of differential analysis conducted using the limma algorithm. The data has been filtered based on your customized cutoff values. Please review the listed proteins for further input in the GO enrichment analysis. Then, click on the ",
+                                                                               code("\"Plot\""),
+                                                                               " button to generate plots."),
+                                                                             column(12, offset = 0,align = "center",
+                                                                             withSpinner(DT::dataTableOutput("pro_go_table",height = "400px",width = "90%"),type = 4,size = 1.5,color = "#739fc7")),
+                                                                             column(12, offset = 0,align = "center",
+                                                                                    br(),
+                                                                             actionButton("pro_go_plot", "Plot",icon("chart-bar",class = "fa-solid fa-chart-bar"),width = "100px",
+                                                                                          style="color: #fff; background-color: #99bdcb; border-color: #99bdcb")),
+                                                                             column(12, offset = 0,
+                                                                                    h2("GO graph"),
+                                                                                    hr(),
+                                                                             ),
+                                                                             tabsetPanel(
+                                                                               tabPanel("Bar plot",
+                                                                                        br(),
+                                                                                        column(9, 
+                                                                                               downloadButton('pro_go_list_download', 'Download GO list'),
+                                                                                               downloadButton('pro_go_bar_downloadPdf', 'Download Plot')),
+                                                                                        br(),
+                                                                                        column(8, offset = 1,style = "margin-top: 30px;",
+                                                                                               withSpinner(plotOutput("pro_go_barplot",height = "450px"),type = 4,size = 1.5,color = "#739fc7")
+                                                                                        )
+                                                                               ),
+                                                                               tabPanel("Dot plot",
+                                                                                        br(),
+                                                                                        column(9,
+                                                                                               downloadButton('pro_go_dot_downloadPdf', 'Download Plot')),
+                                                                                        column(8, offset = 1,style = "margin-top: 30px;",
+                                                                                               withSpinner(plotOutput("pro_go_dotplot",height = "500px"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                               ),
+                                                                             )
+                                                                      ))),
+                                                           tabPanel("KEGG",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       selectizeInput("pro_kegg_dataset", "Choose a dataset:",
+                                                                                                      choices =c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       selectizeInput("pro_kegg_regulation", "Regulation",
+                                                                                                      choices = c("Up","Down")),
+                                                                                       numericInput("pro_kegg_adjP", "adjusted P-value cutoff",value = 0.01, min = 0, max = 1, step = 0.001),
+                                                                                       numericInput("pro_kegg_FC", "Fold change cutoff",value = 1.5, min = 0, step = 0.01),
+                                                                                       actionButton("pro_kegg_action", "Run KEGG")
+                                                                             )),
+                                                                      column(9, offset = 0,
+                                                                             h2("Proteins for KEGG Enrichment Input"),
+                                                                             hr(),
+                                                                             p("The table below displays the results of differential analysis conducted using the limma algorithm. The data has been filtered based on your customized cutoff values. Please review the listed proteins for further input in the KEGG enrichment analysis. Then, click on the ",
+                                                                               code("\"Plot\""),
+                                                                               " button to generate plots."),
+                                                                             column(12, offset = 0,align = "center",
+                                                                                    withSpinner(DT::dataTableOutput("pro_kegg_table",height = "400px",width = "90%"),type = 4,size = 1.5,color = "#739fc7")),
+                                                                             column(12, offset = 0,align = "center",
+                                                                                    br(),
+                                                                                    actionButton("pro_kegg_plot", "Plot",icon("chart-bar",class = "fa-solid fa-chart-bar"),width = "100px",
+                                                                                                 style="color: #fff; background-color: #99bdcb; border-color: #99bdcb")),
+                                                                             column(12, offset = 0,
+                                                                                    h2("KEGG graph"),
+                                                                                    hr(),
+                                                                             ),
+                                                                             tabsetPanel(
+                                                                               tabPanel("Bar plot",
+                                                                                        br(),
+                                                                                        column(9,
+                                                                                               downloadButton('pro_kegg_list_download', 'Download KEGG list'),
+                                                                                               downloadButton('pro_kegg_bar_downloadPdf', 'Download Plot')),
+                                                                                        br(),
+                                                                                        column(8, offset = 0,style = "margin-top: 30px;",
+                                                                                               withSpinner(plotOutput("pro_kegg_barplot"),type = 4,size = 1.5,color = "#739fc7")
+                                                                                        )
+                                                                               ),
+                                                                               tabPanel("Dot plot",
+                                                                                        br(),
+                                                                                        column(9,
+                                                                                               downloadButton('pro_kegg_dot_downloadPdf', 'Download Plot')),
+                                                                                        column(8, offset = 0,style = "margin-top: 30px;",
+                                                                                               withSpinner(plotOutput("pro_kegg_dotplot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                               ),
+                                                                             )
+                                                                      ))),
+                                                           tabPanel("GSEA",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(2, offset = 1,
+                                                                             wellPanel(width = 2,
+                                                                                       textAreaInput("pro_gsea_gene", "Input gene list", value = "SLC19A1, MRTO4, TMEM97, RRP9, PES1, TFB2M, EXOSC5, IPO4, NDUFAF4, NOC4L, MYC, SRM, PA2G4, GNL3, NOLC1, WDR43, RABEPK, NOP16, TBRG4, DDX18, NIP7, WDR74, BYSL, HSPD1, PLK4, NOP2, PPAN, NOP56, RCL1, NPM1, AIMP2, RRP12, PPRC1, TCOF1, MCM5, HK2, CBX3, PLK1, PHB, MCM4, CDK4, DUSP2, MYBBP1A, UTP20, PRMT3, FARSA, MAP3K6, LAS1L, PUS1, HSPE1, SLC29A2, DCTPP1, SUPV3L1, SORD, IMP4, GRWD1, UNG, MPHOSPH10", rows = 10),
+                                                                                       selectizeInput("pro_gsea_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       actionButton("pro_gsea_action", "Run GSEA"),
+                                                                                       downloadButton('pro_gsea_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(5,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pro_gsea_plot",height = "420px"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    ))
+                                                           
+                                                ),
+                                                tabPanel("PPI",
+                                                         br(),
+                                                         fluidRow(
+                                                           column(2, offset = 1,
+                                                                  wellPanel(width = 2,
+                                                                            selectizeInput("pro_ppi_dataset", "Choose a dataset:",
+                                                                                           choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                            selectizeInput("pro_ppi_regulation", "Regulation",
+                                                                                           choices = c("Up","Down")),
+                                                                            numericInput("pro_ppi_adjP", "adjusted P-value cutoff",value = 0.01, min = 0, max = 1, step = 0.001),
+                                                                            numericInput("pro_ppi_FC", "Fold change cutoff",value = 1.5, min = 0, step = 0.01),
+                                                                            actionButton("pro_ppi_action", "Run PPI")
+                                                                  )),
+                                                           column(9, offset = 0,
+                                                                  h2("Proteins for PPI Input"),
+                                                                  hr(),
+                                                                  p("The table below displays the results of differential analysis conducted using the limma algorithm. The data has been filtered based on your customized cutoff values. Please review the listed proteins for further input in the PPI analysis. Then, click on the ",
+                                                                    code("\"Plot\""),
+                                                                    " button to generate plots."),
+                                                                  p("iProPhos supports the visualization of a PPI network for up to 200 differential proteins, ranked by adjusted P-values."),
+                                                                  column(12, offset = 0,align = "center",
+                                                                         withSpinner(DT::dataTableOutput("pro_ppi_table",height = "400px",width = "90%"),type = 4,size = 1.5,color = "#739fc7")),
+                                                                  column(12, offset = 0,align = "center",
+                                                                         br(),
+                                                                         actionButton("pro_ppi_plot", "Plot",icon("chart-bar",class = "fa-solid fa-chart-bar"),width = "100px",
+                                                                                      style="color: #fff; background-color: #99bdcb; border-color: #99bdcb")),
+                                                                  column(12, offset = 0,
+                                                                         h2("PPI graph"),
+                                                                         hr(),
+                                                                        ),
+                                                                  column(9,
+                                                                         downloadButton('pro_ppi_link_download', 'Download PPI links'),
+                                                                         downloadButton('pro_ppi_graph_downloadPdf', 'Download Plot'),
+                                                                         br()),
+                                                                  column(9, 
+                                                                         br(),
+                                                                         withSpinner(visNetworkOutput("pro_ppi",height = "900px",width = "900px"),type = 4,size = 1.5,color = "#739fc7"))
+                                                           )
+                                                         )
+                                                         
+                                                )
+                                    )),
+                           tabPanel("Phosphoproteome Analysis",icon = icon("share-nodes"),
+                                    tabsetPanel(type = "tabs",
+                                                navbarMenu("Differential analysis",
+                                                           tabPanel("Boxplot",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width = 3,
+                                                                                       selectizeInput("pho_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       selectizeInput("pho_site", "Phosphosite", choices = NULL),
+                                                                                       colourInput("pho_col_tumor", "Tumor Color", "red"),
+                                                                                       colourInput("pho_col_normal", "Normal Color", "grey"),
+                                                                                       sliderInput("pho_df_size", label = "Point Size", min = 1, value = 3,
+                                                                                                   max = 8, step = 0.5),
+                                                                                       radioButtons("pho_df_method", label = "Differential Methods",
+                                                                                                    choices = list("t.test", "wilcox.test", "anova"), 
+                                                                                                    selected = "t.test"),
+                                                                                       actionButton("pho_action", "Plot"),
+                                                                                       downloadButton('pho_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pho_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           ),
+                                                           tabPanel("Volcano plot",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width=3,
+                                                                                       selectizeInput("pho_volcano_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                                       hr(),
+                                                                                       strong("[For plot]", style = "font-size: 14px;"),
+                                                                                       selectizeInput("pho_volcano_site", "Phosphosite", choices = NULL),
+                                                                                       numericInput("pho_volcano_FDR", "FDR cutoff",value = 0.05, min = 0, max = 1, step = 0.001),
+                                                                                       numericInput("pho_volcano_log2FC", "|log2FC| cutoff",value = 1, min = 0, step = 0.01),
+                                                                                       actionButton("pho_volcano_action", "Plot")
+                                                                             )),
+                                                                      
+                                                                      column(8,offset = 1,
+                                                                             h2("Volcano plot"),
+                                                                             hr(),
+                                                                             downloadButton('pho_volcano_plot_download', 'Download plot'),
+                                                                             br(),
+                                                                             column(10,offset = 1,
+                                                                             withSpinner(plotOutput("pho_volcano_plot",height="400px",width="400px"),type = 4,size = 1,color = "#739fc7"))),
+                                                                      column(8,offset = 4,
+                                                                             h2("Differential Analysis Results"),
+                                                                             hr(),
+                                                                             h5("Differential analysis is conducted employing the ",code("limma")," algorithm."),
+                                                                             downloadButton('pho_volcano_csv_download', 'Download table'),
+                                                                             withSpinner(DT::dataTableOutput("pho_volcano_table",width="80%"),type = 4,size = 1,color = "#739fc7"))
+                                                                    )
+                                                           )),
+                                                tabPanel("Correlation",
+                                                         br(),
+                                                         fluidRow(
+                                                           column(3, offset = 0,
+                                                                  wellPanel(width = 3,
+                                                                            selectizeInput("pho_corr_dataset", "Choose a dataset:",
+                                                                                           choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                            selectizeInput("pro_A", "Protein",  choices = NULL),
+                                                                            selectizeInput("pho_A", "Site",  choices = NULL),
+                                                                            colourInput("pho_col_non_imputed_corr", "Color for non-imputed data", "blue"),
+                                                                            colourInput("pho_col_imputed_corr", "Color for imputed data", "red"),
+                                                                            sliderInput("pho_corr_size", label = "Point Size", min = 1, value = 3,
+                                                                                        max = 8, step = 0.5),
+                                                                            radioButtons("pho_correlation", "Method",
+                                                                                         choices = c("pearson", "spearman","kendall"),selected = "pearson"), 
+                                                                            actionButton("pho_action2", "Plot"),
+                                                                            downloadButton('pho_downloadPdf2', 'Download')
+                                                                  )),
+                                                           column(8,offset = 1,align="center",
+                                                                  withSpinner(plotOutput("pho_corr_plot"),type = 4,size = 1.5,color = "#739fc7")
+                                                           ))
+                                                ),
+                                                tabPanel("Kinase-substrate Correlation",
+                                                         br(),
+                                                         fluidRow(
+                                                           column(2, offset = 1,
+                                                                  wellPanel(width=2,
+                                                                            selectizeInput("pho_ks_corr_dataset", "Choose a dataset:",
+                                                                                           choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                            selectizeInput("kinase", "Kinase", choices = NULL ),
+                                                                            radioButtons("pho_ks_correlation", "Method",
+                                                                                         choices = c("pearson", "spearman","kendall"),selected = "pearson"),
+                                                                            actionButton("pho_action3", "List")
+                                                                  )),
+                                                           column(7,offset = 1,
+                                                                  h3("Using non-imputed dataset"),
+                                                                  hr(),
+                                                                  downloadButton('pho_ks_table_nonImpute_download', 'Download'),
+                                                                  withSpinner(DT::dataTableOutput("ks_table_nonImpute",height = "450px"),type = 4,size = 1.5,color = "#739fc7"),
+                                                                  br()),
+                                                           column(7,offset = 4,
+                                                                  h3("Using imputed dataset"),
+                                                                  hr(),
+                                                                  downloadButton('pho_ks_table_impute_download', 'Download'),
+                                                                  br(),
+                                                                  column(12,align="center",
+                                                                  withSpinner(DT::dataTableOutput("ks_table_impute",height = "450px"),type = 4,size = 1.5,color = "#739fc7")
+                  
+                                                           ))
+                                                ),
+                                                tabPanel("Kinase-substrate Enrichment", 
+                                                         br(),
+                                                         fluidRow(
+                                                           column(2, offset = 1,
+                                                                  wellPanel(width = 2,
+                                                                            selectizeInput("KSEA_dataset", "Choose a dataset:",
+                                                                                           choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PDA","UCEC")),
+                                                                            radioButtons(inputId = "PhosphoSite_dataset", label = "Select kinase-substrate dataset",
+                                                                                         c("PhosphoSitePlus" = "no",
+                                                                                           "PhosphoSitePlus + NetworKIN" = "yes")),
+                                                                            conditionalPanel(
+                                                                              condition = "input.PhosphoSite_dataset == 'yes'",
+                                                                              numericInput("NetworKIN.cutoff", "Set NetworKIN score cutoff", value = 2, min = 0, max = 228, step = 0.5)),
+                                                                            numericInput(inputId = "p.cutoff", label = "[for plot] Set p-value cutoff", value = 0.05, min = 0, max = 1, step = 0.01),
+                                                                            numericInput(inputId = "m.cutoff", label = "[for plot] Set substrate count cutoff", value = 5, min = 0, step = 1),
+                                                                            actionButton("pho_action4", "Analyze")
+                                                                  )),
+                                                           column(8, offset = 0,
+                                                                  tabsetPanel(
+                                                                    tabPanel("KSEA Barplot",
+                                                                             br(),
+                                                                             column(1, 
+                                                                                    downloadButton('KSEA_downloadPdf', 'Download')),
+                                                                             column(7, offset = 1,
+                                                                                    withSpinner(plotOutput("ksea_barplot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    ),
+                                                                    tabPanel("Kinase scores",
+                                                                             br(),
+                                                                             column(1,
+                                                                                    downloadButton('KSEA_scores_download', 'Download')),
+                                                                             DT::dataTableOutput("ksea_scores")),
+                                                                    tabPanel("Kinase-substrate Links",
+                                                                             br(),
+                                                                             column(1,
+                                                                                    downloadButton('KSEA_links_download', 'Download')),
+                                                                             DT::dataTableOutput("ksea_links"))
+                                                                  )
+                                                           ))
+                                                ),
+                                                navbarMenu("Survival",
+                                                           tabPanel("Survival plot", 
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width = 3,
+                                                                                       selectizeInput("pho_survival_plot_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                                       selectizeInput("pho_survival_plot_site", "Phosphosite", choices = NULL),
+                                                                                       colourInput("pho_col_high", "Group: High", "red"),
+                                                                                       colourInput("pho_col_low", "Group: Low", "blue"),
+                                                                                       radioButtons("pho_cutoff", "Group Cutoff",
+                                                                                                    c("Median", "Optimal value")),
+                                                                                       actionButton("pho_action5", "Plot"),
+                                                                                       downloadButton('pho_downloadPdf5', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pho_survival_plot"),type = 4,size = 1.5,color = "#739fc7")
+                                                                      ))
+                                                           ),
+                                                           tabPanel("Survival table",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width=3,
+                                                                                       selectizeInput("pho_survival_table_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                                       selectizeInput("pho_survival_table_protein", "Protein",choices = NULL),
+                                                                                       actionButton("pho_survival_table_action", "List"),
+                                                                                       downloadButton('pho_survival_table_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(7,offset = 1,
+                                                                             withSpinner(DT::dataTableOutput("pho_survival_table"),type = 4,size = 1.5,color = "#739fc7")
+                                                                      ))
+                                                           )),
+                                                navbarMenu("Clinical",
+                                                           tabPanel("Age",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width = 3,
+                                                                                       selectizeInput("pho_age_dataset", "Dataset (Age range of patients)",
+                                                                                                      c("BRCA (31-95)" = "BRCA",
+                                                                                                        "CCRCC (30-90)" = "CCRCC",
+                                                                                                        "COAD (35-134)" = "COAD",
+                                                                                                        "GBM (24-88)" = "GBM",
+                                                                                                        "HCC (20-81)" = "HCC",
+                                                                                                        "HNSCC (23-81)" = "HNSCC",
+                                                                                                        "LSCC (40-88)" = "LSCC",
+                                                                                                        "LUAD (35-81)" = "LUAD",
+                                                                                                        "OV (37-86)" = "OV",
+                                                                                                        "PBT (0-31)" = "PBT",
+                                                                                                        "PDA (31-85)" = "PDA",
+                                                                                                        "UCEC (38-90)" = "UCEC"
+                                                                                                      )),
+                                                                                       selectizeInput("pho_age_site", "Phosphosite",choices = NULL),
+                                                                                       colourInput("pho_age_col_young", "Younger Color", "#0474b4"),
+                                                                                       colourInput("pho_age_col_old", "Older Color", "#e48424"),
+                                                                                       radioButtons("pho_age_cutoff", "Method",
+                                                                                                    choices = c("median", "custom"),selected = "median"),
+                                                                                       conditionalPanel(
+                                                                                         condition = "input.pho_age_cutoff == 'custom'",
+                                                                                         numericInput("pho_age_custom", label = "Please input your cutoff",value = 50,min = 0,max = 90,step = 1)),
+                                                                                       radioButtons("pho_age_method", label = "Differential Methods",
+                                                                                                    choices = list("t.test", "wilcox.test", "anova")), 
+                                                                                       actionButton("pho_age_action", "Plot"),
+                                                                                       downloadButton('pho_age_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pho_age_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )),
+                                                           tabPanel("Gender",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width = 3,
+                                                                                       selectizeInput("pho_gender_dataset", "Choose a dataset:",
+                                                                                                      choices = c("CCRCC","COAD","GBM","HCC","HNSCC","LSCC","LUAD","PBT","PDA")),
+                                                                                       selectizeInput("pho_gender_site", "Phosphosite",choices = NULL),
+                                                                                       colourInput("pho_gender_col_female", "Female Color", "#e48424"),
+                                                                                       colourInput("pho_gender_col_male", "Male Color", "#0474b4"),
+                                                                                       radioButtons("pho_gender_method", label = "Differential Methods",
+                                                                                                    choices = list("t.test", "wilcox.test", "anova"), 
+                                                                                                    selected = "t.test"),
+                                                                                       actionButton("pho_gender_action", "Plot"),
+                                                                                       downloadButton('pho_gender_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(4,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pho_gender_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           ),
+                                                           tabPanel("Tumor stage",
+                                                                    br(),
+                                                                    fluidRow(
+                                                                      column(3, offset = 0,
+                                                                             wellPanel(width = 3,
+                                                                                       selectizeInput("pho_stage_dataset", "Choose a dataset:",
+                                                                                                      choices = c("BRCA","CCRCC","COAD","HCC","HNSCC","LSCC","LUAD","OV","PBT","PDA","UCEC")),
+                                                                                       selectizeInput("pho_stage_site", "Phosphosite",choices = NULL),
+                                                                                       actionButton("pho_stage_action", "Plot"),
+                                                                                       downloadButton('pho_stage_downloadPdf', 'Download')
+                                                                             )),
+                                                                      column(8,offset = 1,style = "margin-top: 30px;",
+                                                                             withSpinner(plotOutput("pho_stage_plot"),type = 4,size = 1.5,color = "#739fc7"))
+                                                                    )
+                                                           )
+                                                ))),
+                           tabPanel("Help",icon=icon("magnifying-glass"),
+                                    includeMarkdown("Help.md")),
+                           tabPanel("Download",icon = icon("download"),
+                                    includeHTML("download.html")),
+                           tabPanel("About",icon = icon("circle-info"),
+                                    includeMarkdown("About.md")),
+                           
+                ))
+)
