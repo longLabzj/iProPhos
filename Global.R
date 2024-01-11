@@ -26,6 +26,3 @@ library(ggraph)
 library(limma)
 library(data.table)
 
-
-kk <- read.gson("./data/kegg.gson")
-string_db <- readRDS(file = "./data/string_db.rds")
